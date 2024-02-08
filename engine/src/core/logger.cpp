@@ -4,7 +4,7 @@
 
 void log_message(LogLevel level, const char *msg, ...)
 {
-    const char *log_list[] = { "[INFO]:  ", "[WARN]:  ", "[ERROR]: " };
+    const char *log_list[] = { "[INFO]:  ", "[WARN]:  ", "[DEBUG]: ", "[ERROR]: " };
     va_list args;
     va_start(args, msg);
     char buf[1024];

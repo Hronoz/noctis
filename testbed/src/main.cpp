@@ -3,11 +3,13 @@
 
 int main()
 {
-    Platform platform;
-    INFO("100");
-    WARN("100");
-    ERROR("100");
-    platform.start("TEST TEST TEST", 100, 100, 1280, 720);
+    Platform platform("TEST TEST TEST", 100, 100, 1280, 720);
+    INFO("test message");
+    while (true) {
+        if (platform.waitForEvent()) {
+            break;
+        }
+    }
 
     return 0;
 }
