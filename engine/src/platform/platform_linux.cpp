@@ -4,6 +4,8 @@
 
 #include "core/logger.hpp"
 
+// TODO: xcb docs is absolute garbage, switch to xlib or suffer
+
 // This macro is used to rename struct field in <xcb/xkb.h> named "explicit" which is keyword in C++
 // xcb/xkb.h:727:19
 // xcb/xkb.h:2005:30
