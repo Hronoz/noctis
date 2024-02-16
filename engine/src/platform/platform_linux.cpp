@@ -1,4 +1,4 @@
-#include "platform/platform.hpp" // "platform.hpp" provides "engine.hpp" with needed defines and typedefs
+#include "platform.hpp" // "platform.hpp" provides "engine.hpp" with needed defines and typedefs
 
 #ifdef PLATFORM_LINUX
 
@@ -28,6 +28,8 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
 #include <xkbcommon/xkbcommon.h>
+
+bool processInput(xkb_keysym_t keysym);
 
 struct Platform::Impl
 {
@@ -71,8 +73,8 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
             screen->root,
             x,
             y,
-            screen->width_in_pixels,
-            screen->height_in_pixels,
+            width,
+            height,
             10,
             XCB_WINDOW_CLASS_INPUT_OUTPUT,
             screen->root_visual,
@@ -139,16 +141,12 @@ bool Platform::waitForEvent()
         case XCB_KEY_PRESS:
             keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_press_event_t *) event)->detail);
             xkb_keysym_get_name(keysym, key, 32);
-            DEBUG("Button pressed: \t%s", key);
-            switch (((xcb_key_press_event_t *) event)->detail) {
-                case 9:
-                    finish = true;
-                    break;
-            }
+            DEBUG("Button pressed: \t%s\t%d", key, ((xcb_key_press_event_t *) event)->detail);
+            finish = processInput(keysym);
             break;
 
         case XCB_KEY_RELEASE:
-            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_press_event_t *) event)->detail);
+            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_release_event_t *) event)->detail);
             xkb_keysym_get_name(keysym, key, 32);
             DEBUG("Button released: \t%s", key);
             break;
@@ -174,6 +172,16 @@ bool Platform::waitForEvent()
 Platform::~Platform()
 {
     xcb_disconnect(pimpl->connection);
+}
+
+bool processInput(xkb_keysym_t keysym)
+{
+    switch (keysym) {
+        case XKB_KEY_Escape:
+            return true;
+        default:
+            return false;
+    }
 }
 
 #endif

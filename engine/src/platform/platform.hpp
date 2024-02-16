@@ -1,17 +1,17 @@
 #pragma once
 
+#include "noctis.hpp"
 #include <memory>
-#include "engine.hpp"
 
 class Platform
 {
 private:
-    struct Impl; // struct for platfrom-specific info
+    struct Impl; // struct for platform-specific info
     std::unique_ptr<Impl> pimpl;
 public:
     Platform(const char *title, i16 x, i16 y, i32 width, i32 height);
 
-    virtual ~Platform();
+    ~Platform();
 
     bool waitForEvent();
 };

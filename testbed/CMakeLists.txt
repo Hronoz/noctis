@@ -5,5 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(testbed src/main.cpp)
 target_link_libraries(testbed PRIVATE engine)
-target_include_directories(testbed PUBLIC ${PROJECT_SOURCE_DIR}/engine/include)
+get_target_property(ENGINE_SOURCE_DIR engine SOURCE_DIR)
+target_include_directories(testbed PUBLIC ${ENGINE_SOURCE_DIR}/src)
 # install(TARGETS testbed RUNTIME DESTINATION bin)

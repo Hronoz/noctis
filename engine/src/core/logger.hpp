@@ -1,5 +1,7 @@
 #pragma once
 
+#include "noctis.hpp"
+
 enum class LogLevel
 {
     INFO,

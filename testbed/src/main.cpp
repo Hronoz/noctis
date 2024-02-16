@@ -1,12 +1,18 @@
 #include <core/logger.hpp>
-#include <platform/platform.hpp>
+#include <render/Renderer.hpp>
+#include <render/vulkan/VulkanBackend.hpp>
+#include <core/Game.hpp>
 
 int main()
 {
-    Platform platform("TEST TEST TEST", 100, 100, 1280, 720);
+    Game game("serious shit", 100, 100);
+    Renderer<VulkanBackend> render;
+
     INFO("test message");
+    test();
+
     while (true) {
-        if (platform.waitForEvent()) {
+        if (game.waitForEvent()) {
             break;
         }
     }
