@@ -1,7 +1,7 @@
 #pragma once
 
 #include "noctis.hpp"
-#include "platform/platform.hpp"
+#include "platform/Platform.hpp"
 
 class IGameState;
 
@@ -11,7 +11,8 @@ class Game
     u16 ticksPerSecond;
     u16 skipTicks = 1000 / ticksPerSecond;
     u16 maxFrameSkip = 10;
-public:
+
+  public:
     bool isRunning = false;
 
     Game(const char *windowTitle, i32 width, i32 height, i16 ticks = 50);

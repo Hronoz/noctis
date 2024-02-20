@@ -51,6 +51,9 @@
         <rule entity="LOCAL_VARIABLE" visibility="ANY" specifier="ANY" prefix="" style="CAMEL_CASE" suffix="" />
       </rules>
     </Objective-C-extensions>
+    <clangFormatSettings>
+      <option name="ENABLED" value="true" />
+    </clangFormatSettings>
     <files>
       <extensions>
         <pair source="cpp" header="hpp" fileNamingConvention="NONE" />

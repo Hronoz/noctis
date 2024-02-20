@@ -2,17 +2,15 @@
 
 #include "Game.hpp"
 
-// Implementations of this interface should be sinlgetones
+// Implementations of this interface should be sinlgerones
 class IGameState
 {
-protected:
-    IGameState()
-    { };
+  protected:
+    IGameState(){};
 
     virtual ~IGameState() = 0;
 
-public:
-
+  public:
     virtual void pause() = 0;
 
     virtual void resume() = 0;
@@ -23,10 +21,7 @@ public:
 
     virtual void draw(Game &game) = 0;
 
-    inline void changeState(Game &game, IGameState &state)
-    {
-        game.changeState(state);
-    }
+    inline void changeState(Game &game, IGameState &state) { game.changeState(state); }
 };
 
 IGameState::~IGameState() = default;

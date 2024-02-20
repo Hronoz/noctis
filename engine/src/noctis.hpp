@@ -1,5 +1,29 @@
 #pragma once
 
+#define BIT(x) (1 << x)
+
+enum EventCategory
+{
+    None = 0,
+    EventCategoryApplication = BIT(0),
+    EventCategoryInput = BIT(1),
+    EventCategoryKeyboard = BIT(2),
+    EventCategoryMouse = BIT(3),
+    EventCategoryMouseButton = BIT(4)
+};
+
+enum class EventType
+{
+    MousePress,
+    MouseRelease
+};
+
+#define EVENT_CLASS_CATEGORY(category)                                                                                 \
+    i32 getCategoryFlags() const override                                                                              \
+    {                                                                                                                  \
+        return category;                                                                                               \
+    }
+
 void test();
 
 typedef unsigned char u8;

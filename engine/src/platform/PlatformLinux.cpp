@@ -1,8 +1,11 @@
-#include "platform.hpp" // "platform.hpp" provides "engine.hpp" with needed defines and typedefs
+#include "Platform.hpp" // "platform.hpp" provides "engine.hpp" with needed defines and typedefs
+#include "noctis/EBus.hpp"
 
 #ifdef PLATFORM_LINUX
 
-#include "core/logger.hpp"
+#include "noctis/events/MousePressEvent.hpp"
+#include "noctis/events/MouseReleaseEvent.hpp"
+#include "noctis/logger.hpp"
 
 // TODO: xcb docs is absolute garbage, switch to xlib or suffer
 
@@ -63,24 +66,22 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
     u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 
     u32 event_list =
-            XCB_BUTTON_PRESS | XCB_BUTTON_RELEASE | XCB_MOTION_NOTIFY | XCB_KEY_PRESS | XCB_KEY_RELEASE | XCB_EXPOSE;
-    u32 value_list[] = {screen->black_pixel, event_list};
+      XCB_BUTTON_PRESS | XCB_BUTTON_RELEASE | XCB_MOTION_NOTIFY | XCB_KEY_PRESS | XCB_KEY_RELEASE | XCB_EXPOSE;
+    u32 value_list[] = { screen->black_pixel, event_list };
 
-    xcb_create_window(
-            connection,
-            screen->root_depth,
-            window,
-            screen->root,
-            x,
-            y,
-            width,
-            height,
-            10,
-            XCB_WINDOW_CLASS_INPUT_OUTPUT,
-            screen->root_visual,
-            mask,
-            value_list
-    );
+    xcb_create_window(connection,
+                      screen->root_depth,
+                      window,
+                      screen->root,
+                      x,
+                      y,
+                      width,
+                      height,
+                      10,
+                      XCB_WINDOW_CLASS_INPUT_OUTPUT,
+                      screen->root_visual,
+                      mask,
+                      value_list);
 
     xcb_ewmh_connection_t ewmh;
     xcb_intern_atom_cookie_t *ewmh_cookies = xcb_ewmh_init_atoms(connection, &ewmh);
@@ -91,23 +92,20 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
     }
 
     xcb_change_property(
-            connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, std::strlen(title), title
-    );
+      connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, std::strlen(title), title);
 
-    xcb_change_property(
-            connection,
-            XCB_PROP_MODE_REPLACE,
-            window,
-            ewmh._NET_WM_STATE,
-            XCB_ATOM_ATOM,
-            32,
-            1,
-            &(ewmh._NET_WM_STATE_FULLSCREEN));
+    xcb_change_property(connection,
+                        XCB_PROP_MODE_REPLACE,
+                        window,
+                        ewmh._NET_WM_STATE,
+                        XCB_ATOM_ATOM,
+                        32,
+                        1,
+                        &(ewmh._NET_WM_STATE_FULLSCREEN));
 
     xcb_xkb_use_extension(connection, XCB_XKB_MAJOR_VERSION, XCB_XKB_MINOR_VERSION);
     xcb_xkb_per_client_flags(
-            connection, XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 1, 0, 0, 0
-    );
+      connection, XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 1, 0, 0, 0);
 
     xkb_context *x_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     xkb_keymap *x_keymap = xkb_keymap_new_from_names(x_context, nullptr, XKB_KEYMAP_COMPILE_NO_FLAGS);
@@ -138,29 +136,29 @@ bool Platform::waitForEvent()
     event = xcb_wait_for_event(pimpl->connection);
 
     switch (event->response_type) {
-        case XCB_KEY_PRESS:
-            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_press_event_t *) event)->detail);
+        case XCB_KEY_PRESS: {
+            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_press_event_t *)event)->detail);
             xkb_keysym_get_name(keysym, key, 32);
-            DEBUG("Button pressed: \t%s\t%d", key, ((xcb_key_press_event_t *) event)->detail);
+            DEBUG("Button pressed: \t%s\t%d", key, ((xcb_key_press_event_t *)event)->detail);
             finish = processInput(keysym);
             break;
-
-        case XCB_KEY_RELEASE:
-            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_release_event_t *) event)->detail);
+        }
+        case XCB_KEY_RELEASE: {
+            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_release_event_t *)event)->detail);
             xkb_keysym_get_name(keysym, key, 32);
             DEBUG("Button released: \t%s", key);
             break;
-
-        case XCB_BUTTON_PRESS:
-        DEBUG("Mouse pressed:  \t%u", ((xcb_button_press_event_t *) event)->detail);
-            DEBUG("X-coord: \t\t\t%u", ((xcb_button_press_event_t *) event)->event_x);
-            DEBUG("Y-coord: \t\t\t%u", ((xcb_button_press_event_t *) event)->event_y);
+        }
+        case XCB_BUTTON_PRESS: {
+            auto *e = (xcb_button_press_event_t *)event;
+            EBus::Instance().publish(new MousePressEvent(e->event_x, e->event_y, e->detail));
             break;
-        case XCB_BUTTON_RELEASE:
-        DEBUG("Mouse released:  \t%u", ((xcb_button_release_event_t *) event)->detail);
-            DEBUG("X-coord: \t\t\t%u", ((xcb_button_release_event_t *) event)->event_x);
-            DEBUG("Y-coord: \t\t\t%u", ((xcb_button_release_event_t *) event)->event_y);
-
+        }
+        case XCB_BUTTON_RELEASE: {
+            auto *e = (xcb_button_press_event_t *)event;
+            EBus::Instance().publish(new MouseReleaseEvent(e->event_x, e->event_y, e->detail));
+            break;
+        }
         default:
             break;
     }

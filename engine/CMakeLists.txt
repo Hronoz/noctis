@@ -9,20 +9,26 @@ include_directories(${PROJECT_SOURCE_DIR}/engine/src)
 
 add_library(engine SHARED src/noctis.cpp
         src/noctis.hpp
-        src/core/logger.cpp
-        src/core/logger.hpp
-        src/platform/platform_linux.cpp
-        src/platform/platform.hpp
+        src/noctis/logger.cpp
+        src/noctis/logger.hpp
+        src/platform/PlatformLinux.cpp
+        src/platform/Platform.hpp
         src/render/Renderer.cpp
         src/render/Renderer.hpp
         src/render/IRendererBackend.hpp
         src/render/vulkan/VulkanBackend.cpp
         src/render/vulkan/VulkanBackend.hpp
-        src/core/Game.cpp
-        src/core/Game.hpp
-        src/core/IGameState.hpp
-        src/core/TestGameState.cpp
-        src/core/TestGameState.hpp
+        src/noctis/Game.cpp
+        src/noctis/Game.hpp
+        src/noctis/IGameState.hpp
+        src/noctis/TestGameState.cpp
+        src/noctis/TestGameState.hpp
+        src/noctis/Event.hpp
+        src/noctis/events/MousePressEvent.hpp
+        src/noctis/EBus.hpp
+        src/noctis/events/MousePressEvent.cpp
+        src/noctis/events/MouseReleaseEvent.cpp
+        src/noctis/events/MouseReleaseEvent.hpp
 )
 target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
 target_link_libraries(engine Vulkan::Vulkan)

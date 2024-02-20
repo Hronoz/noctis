@@ -5,7 +5,7 @@
 #include <glm/vec4.hpp>
 #include <vulkan/vulkan.h>
 #include "noctis.hpp"
-#include "core/logger.hpp"
+#include "noctis/logger.hpp"
 
 void test()
 {
