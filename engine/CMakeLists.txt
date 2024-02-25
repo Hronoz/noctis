@@ -29,9 +29,8 @@ add_library(engine SHARED src/noctis.cpp
         src/noctis/events/MousePressEvent.cpp
         src/noctis/events/MouseReleaseEvent.cpp
         src/noctis/events/MouseReleaseEvent.hpp
+        src/render/vulkan/VkTypes.hpp
 )
 target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
 target_link_libraries(engine Vulkan::Vulkan)
 target_link_libraries(engine glm::glm)
-
-# install(TARGETS testbed LIBRARY DESTINATION lib ARCHIVE DESTINATION bin)

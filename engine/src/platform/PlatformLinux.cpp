@@ -1,13 +1,11 @@
 #include "Platform.hpp" // "platform.hpp" provides "engine.hpp" with needed defines and typedefs
 #include "noctis/EBus.hpp"
-
-#ifdef PLATFORM_LINUX
-
 #include "noctis/events/MousePressEvent.hpp"
 #include "noctis/events/MouseReleaseEvent.hpp"
 #include "noctis/logger.hpp"
+#include "render/vulkan/VkTypes.hpp"
 
-// TODO: xcb docs is absolute garbage, switch to xlib or suffer
+#ifdef PLATFORM_LINUX
 
 // This macro is used to rename struct field in <xcb/xkb.h> named "explicit" which is keyword in C++
 // xcb/xkb.h:727:19
@@ -28,11 +26,10 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <vulkan/vulkan_xcb.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
 #include <xkbcommon/xkbcommon.h>
-
-bool processInput(xkb_keysym_t keysym);
 
 struct Platform::Impl
 {
@@ -45,7 +42,11 @@ struct Platform::Impl
 };
 
 Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
+  : windowName(title)
+  , _width(width)
+  , _height(height)
 {
+    DEBUG("Linux platform constructor was called");
     xcb_connection_t *connection = xcb_connect(nullptr, nullptr);
 
     if (xcb_connection_has_error(connection)) {
@@ -60,13 +61,14 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
 
     DEBUG("roots_len:\t%d", setup->roots_len);
     DEBUG("root:\t\t%d", screen->root);
-    DEBUG("width:\t\t%d", screen->width_in_pixels);
-    DEBUG("height:\t%d", screen->height_in_pixels);
+    DEBUG("width:\t\t%d", _width);
+    DEBUG("height:\t%d", _height);
 
     u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 
-    u32 event_list =
-      XCB_BUTTON_PRESS | XCB_BUTTON_RELEASE | XCB_MOTION_NOTIFY | XCB_KEY_PRESS | XCB_KEY_RELEASE | XCB_EXPOSE;
+    u32 event_list = XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS |
+                     XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_POINTER_MOTION |
+                     XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_STRUCTURE_NOTIFY;
     u32 value_list[] = { screen->black_pixel, event_list };
 
     xcb_create_window(connection,
@@ -75,8 +77,8 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
                       screen->root,
                       x,
                       y,
-                      width,
-                      height,
+                      _width,
+                      _height,
                       10,
                       XCB_WINDOW_CLASS_INPUT_OUTPUT,
                       screen->root_visual,
@@ -91,8 +93,14 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
         exit(1);
     }
 
-    xcb_change_property(
-      connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, std::strlen(title), title);
+    xcb_change_property(connection,
+                        XCB_PROP_MODE_REPLACE,
+                        window,
+                        XCB_ATOM_WM_NAME,
+                        XCB_ATOM_STRING,
+                        8,
+                        std::strlen(windowName),
+                        windowName);
 
     xcb_change_property(connection,
                         XCB_PROP_MODE_REPLACE,
@@ -111,6 +119,14 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
     xkb_keymap *x_keymap = xkb_keymap_new_from_names(x_context, nullptr, XKB_KEYMAP_COMPILE_NO_FLAGS);
     xkb_state *key_state = xkb_state_new(x_keymap);
 
+    xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+    xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie, 0);
+
+    xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+    xcb_intern_atom_reply_t *reply2 = xcb_intern_atom_reply(connection, cookie2, 0);
+
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, width, (*reply).atom, 4, 32, 1, &(*reply2).atom);
+
     pimpl = std::make_unique<Impl>();
     pimpl->connection = connection;
     pimpl->screen = screen;
@@ -123,44 +139,47 @@ Platform::Platform(const char *title, i16 x, i16 y, i32 width, i32 height)
     xcb_flush(connection);
     xcb_delete_property(pimpl->connection, pimpl->window, pimpl->ewmh._NET_WM_STATE);
     xcb_flush(pimpl->connection);
+
+    DEBUG("Linux platform was successfully initialized");
 }
 
 // Return true when escaped was pressed
-bool Platform::waitForEvent()
+bool Platform::pollForEvent()
 {
     xcb_generic_event_t *event;
     bool finish = false;
     xkb_keysym_t keysym;
-    char key[32];
 
-    event = xcb_wait_for_event(pimpl->connection);
-
-    switch (event->response_type) {
-        case XCB_KEY_PRESS: {
-            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_press_event_t *)event)->detail);
-            xkb_keysym_get_name(keysym, key, 32);
-            DEBUG("Button pressed: \t%s\t%d", key, ((xcb_key_press_event_t *)event)->detail);
-            finish = processInput(keysym);
-            break;
+    if ((event = xcb_poll_for_event(pimpl->connection)) != nullptr) {
+        switch (event->response_type & ~0x80) {
+            case XCB_KEY_PRESS: {
+                auto *key_event = (xcb_key_press_event_t *)event;
+                if (key_event->detail == 9) { // Escape key
+                    finish = true;
+                }
+                break;
+            }
+            case XCB_BUTTON_PRESS: {
+                auto *buttonEvent = (xcb_button_press_event_t *)event;
+                EBus::Instance().publish(
+                  new MousePressEvent(buttonEvent->event_x, buttonEvent->event_y, buttonEvent->detail));
+                break;
+            }
+            case XCB_BUTTON_RELEASE: {
+                auto *buttonEvent = (xcb_button_release_event_t *)event;
+                EBus::Instance().publish(
+                  new MouseReleaseEvent(buttonEvent->event_x, buttonEvent->event_y, buttonEvent->detail));
+                break;
+            }
+            case XCB_EXPOSE: {
+                DEBUG("Expose event");
+                break;
+            }
+            case XCB_CLIENT_MESSAGE: {
+                auto *clientEvent = (xcb_client_message_event_t *)event;
+                break;
+            }
         }
-        case XCB_KEY_RELEASE: {
-            keysym = xkb_state_key_get_one_sym(pimpl->key_state, ((xcb_key_release_event_t *)event)->detail);
-            xkb_keysym_get_name(keysym, key, 32);
-            DEBUG("Button released: \t%s", key);
-            break;
-        }
-        case XCB_BUTTON_PRESS: {
-            auto *e = (xcb_button_press_event_t *)event;
-            EBus::Instance().publish(new MousePressEvent(e->event_x, e->event_y, e->detail));
-            break;
-        }
-        case XCB_BUTTON_RELEASE: {
-            auto *e = (xcb_button_press_event_t *)event;
-            EBus::Instance().publish(new MouseReleaseEvent(e->event_x, e->event_y, e->detail));
-            break;
-        }
-        default:
-            break;
     }
     free(event);
 
@@ -172,14 +191,39 @@ Platform::~Platform()
     xcb_disconnect(pimpl->connection);
 }
 
-bool processInput(xkb_keysym_t keysym)
+void Platform::createWindowSurface(VkInstance instance, const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *surface)
 {
-    switch (keysym) {
-        case XKB_KEY_Escape:
-            return true;
-        default:
-            return false;
+    VkXcbSurfaceCreateInfoKHR surfaceCreateInfo{};
+    surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+    surfaceCreateInfo.pNext = nullptr;
+    surfaceCreateInfo.flags = 0;
+    surfaceCreateInfo.connection = pimpl->connection;
+    surfaceCreateInfo.window = pimpl->window;
+
+    VK_CHECK(vkCreateXcbSurfaceKHR(instance, &surfaceCreateInfo, pAllocator, surface));
+}
+
+void Platform::getFramebufferSize(u32 &width, u32 &height)
+{
+    width = _width;
+    height = _height;
+}
+
+std::vector<char> Platform::readFile(const std::string &filename)
+{
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("failed to open file");
     }
+
+    size_t fileSize = (size_t)file.tellg();
+    std::vector<char> buffer(fileSize);
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    file.close();
+
+    return buffer;
 }
 
 #endif

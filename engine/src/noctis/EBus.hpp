@@ -17,8 +17,6 @@ class EBus
 
     void subscribe(EventType eventType, const std::function<void(const Event *)> &eventListener);
 
-    void unsubscribe(EventType eventType, const std::function<void(const Event *)> &eventListener);
-
     ~EBus()
     {
         eventListeners.clear();
@@ -35,13 +33,7 @@ class EBus
 void EBus::subscribe(EventType eventType, const std::function<void(const Event *)> &eventListener)
 {
     eventListeners[eventType].push_back(eventListener);
-    INFO("Event type: %d", static_cast<std::underlying_type<EventType>::type>(eventType));
-}
-
-void EBus::unsubscribe(EventType eventType, const std::function<void(const Event *)> &eventListener)
-{
-    auto &listeners = eventListeners[eventType];
-    // std::erase(listeners, eventListener);
+    DEBUG("Event type subscribed: %d", static_cast<std::underlying_type<EventType>::type>(eventType));
 }
 
 EBus &EBus::Instance()
