@@ -13,11 +13,6 @@ add_library(engine SHARED src/noctis.cpp
         src/noctis/logger.hpp
         src/platform/PlatformLinux.cpp
         src/platform/Platform.hpp
-        src/render/Renderer.cpp
-        src/render/Renderer.hpp
-        src/render/IRendererBackend.hpp
-        src/render/vulkan/VulkanBackend.cpp
-        src/render/vulkan/VulkanBackend.hpp
         src/noctis/Game.cpp
         src/noctis/Game.hpp
         src/noctis/IGameState.hpp
@@ -30,6 +25,10 @@ add_library(engine SHARED src/noctis.cpp
         src/noctis/events/MouseReleaseEvent.cpp
         src/noctis/events/MouseReleaseEvent.hpp
         src/render/vulkan/VkTypes.hpp
+        src/noctis/events/MouseMoveEvent.cpp
+        src/noctis/events/MouseMoveEvent.hpp
+        src/noctis/Renderer.cpp
+        src/noctis/Renderer.hpp
 )
 target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
 target_link_libraries(engine Vulkan::Vulkan)

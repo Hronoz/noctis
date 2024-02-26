@@ -15,7 +15,8 @@ enum EventCategory
 enum class EventType
 {
     MousePress,
-    MouseRelease
+    MouseRelease,
+    MouseMove
 };
 
 #define EVENT_CLASS_CATEGORY(category)                                                                                 \

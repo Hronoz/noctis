@@ -1,5 +1,6 @@
 #include "Platform.hpp" // "platform.hpp" provides "engine.hpp" with needed defines and typedefs
 #include "noctis/EBus.hpp"
+#include "noctis/events/MouseMoveEvent.hpp"
 #include "noctis/events/MousePressEvent.hpp"
 #include "noctis/events/MouseReleaseEvent.hpp"
 #include "noctis/logger.hpp"
@@ -152,6 +153,11 @@ bool Platform::pollForEvent()
 
     if ((event = xcb_poll_for_event(pimpl->connection)) != nullptr) {
         switch (event->response_type & ~0x80) {
+            case XCB_MOTION_NOTIFY: {
+                auto *motionEvent = (xcb_motion_notify_event_t *)event;
+                EBus::Instance().publish(new MouseMoveEvent(motionEvent->event_x, motionEvent->event_y));
+                break;
+            }
             case XCB_KEY_PRESS: {
                 auto *key_event = (xcb_key_press_event_t *)event;
                 if (key_event->detail == 9) { // Escape key
