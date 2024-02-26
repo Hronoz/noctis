@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <set>
 #define STB_IMAGE_IMPLEMENTATION
+#include "render/vulkan/VkTypes.hpp"
 #include "stb_image.h"
 
 Game::Game(const char *windowTitle, i32 width, i32 height)
@@ -79,6 +80,7 @@ void Game::initVulkan()
     createRenderPass();
     createDescriptorSetLayout();
     createGraphicsPipeline();
+    createDepthResources();
     createFramebuffers();
     createCommandPool();
     createTextureImage();
@@ -478,7 +480,8 @@ void Game::createImageViews()
     context.swapchainImageViews.resize(context.swapchainImages.size());
 
     for (u32 i = 0; i < context.swapchainImages.size(); i++) {
-        context.swapchainImageViews[i] = createImageView(context.swapchainImages[i], context.swapchainImageFormat);
+        context.swapchainImageViews[i] =
+          createImageView(context.swapchainImages[i], context.swapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }
 void Game::createGraphicsPipeline()
@@ -572,6 +575,18 @@ void Game::createGraphicsPipeline()
     multisample.alphaToCoverageEnable = VK_FALSE;
     multisample.alphaToOneEnable = VK_FALSE;
 
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.minDepthBounds = 0.0f; // Optional
+    depthStencil.maxDepthBounds = 1.0f; // Optional
+    depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.front = {}; // Optional
+    depthStencil.back = {};  // Optional
+
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask =
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -619,6 +634,7 @@ void Game::createGraphicsPipeline()
     pipelineInfo.pMultisampleState = &multisample;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.layout = context.pipelineLayout;
     pipelineInfo.renderPass = context.renderPass;
     pipelineInfo.subpass = 0;
@@ -660,23 +676,41 @@ void Game::createRenderPass()
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+    VkAttachmentDescription depthAttachment{};
+    depthAttachment.format = findDepthFormat();
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttachmentRef{};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.srcStageMask =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstStageMask =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+    std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.attachmentCount = static_cast<u32>(attachments.size());
+    renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;
@@ -689,13 +723,13 @@ void Game::createFramebuffers()
     context.swapchainFramebuffers.resize(context.swapchainImageViews.size());
 
     for (size_t i = 0; i < context.swapchainImageViews.size(); i++) {
-        VkImageView attachments[] = { context.swapchainImageViews[i] };
+        std::array<VkImageView, 2> attachments = { context.swapchainImageViews[i], context.depthImageView };
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = context.renderPass;
-        framebufferInfo.attachmentCount = 1;
-        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.attachmentCount = static_cast<u32>(attachments.size());
+        framebufferInfo.pAttachments = attachments.data();
         framebufferInfo.width = context.swapchainExtent.width;
         framebufferInfo.height = context.swapchainExtent.height;
         framebufferInfo.layers = 1;
@@ -741,9 +775,14 @@ void Game::recordCommandBuffer(VkCommandBuffer commandBuffer, u32 imageIndex)
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = context.swapchainExtent;
 
-    VkClearValue clearColor = { { { 0.0f, 0.0f, 0.0f, 1.0f } } };
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues = &clearColor;
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {
+        { 0.0f, 0.0f, 0.0f, 1.0f }
+    };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
+    renderPassInfo.clearValueCount = static_cast<u32>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.graphicsPipeline);
@@ -873,6 +912,10 @@ void Game::end()
 
 void Game::cleanupSwapchain()
 {
+    vkDestroyImageView(context.device, context.depthImageView, nullptr);
+    vkDestroyImage(context.device, context.depthImage, nullptr);
+    vkFreeMemory(context.device, context.depthImageMemory, nullptr);
+
     for (size_t i = 0; i < context.swapchainFramebuffers.size(); i++) {
         vkDestroyFramebuffer(context.device, context.swapchainFramebuffers[i], nullptr);
     }
@@ -892,6 +935,7 @@ void Game::recreateSwapchain()
 
     createSwapchain();
     createImageViews();
+    createDepthResources();
     createFramebuffers();
 }
 void Game::createVertexBuffer()
@@ -1158,6 +1202,14 @@ void Game::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout o
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+               newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask =
+          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     } else {
         throw std::invalid_argument("unsupported layout transition!");
     }
@@ -1307,17 +1359,18 @@ void Game::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 
 void Game::createTextureImageView()
 {
-    context.textureImageView = createImageView(context.textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+    context.textureImageView =
+      createImageView(context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-VkImageView Game::createImageView(VkImage image, VkFormat format)
+VkImageView Game::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -1352,4 +1405,35 @@ void Game::createTextureSampler()
     samplerInfo.maxLod = 0.0f;
 
     VK_CHECK(vkCreateSampler(context.device, &samplerInfo, nullptr, &context.textureSampler));
+}
+void Game::createDepthResources()
+{
+    VkFormat depthFormat = findDepthFormat();
+    createImage(context.swapchainExtent.width,
+                context.swapchainExtent.height,
+                depthFormat,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                context.depthImage,
+                context.depthImageMemory);
+    context.depthImageView = createImageView(context.depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
+VkFormat Game::findSupportedFormat(const std::vector<VkFormat> &candidates,
+                                   VkImageTiling tiling,
+                                   VkFormatFeatureFlags features)
+{
+    for (VkFormat format : candidates) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(context.physicalDevice, format, &props);
+
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+            return format;
+        } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+
+    throw std::runtime_error("failed to find supported format!");
 }
