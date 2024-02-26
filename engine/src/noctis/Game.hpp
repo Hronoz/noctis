@@ -11,6 +11,7 @@
 #include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include "render/vulkan/VkTypes.hpp"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -106,6 +107,8 @@ class Game
         std::vector<void *> uniformBuffersMapped;
         VkDescriptorPool descriptorPool;
         std::vector<VkDescriptorSet> descriptorSets;
+        VkImage textureImage;
+        VkDeviceMemory textureImageMemory;
     } context;
 
     struct QueueFamilyIndices
@@ -185,6 +188,10 @@ class Game
 
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
     void updateUniformBuffer(u32 currentImage);
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
@@ -211,6 +218,21 @@ class Game
     bool checkValidationLayerSupport();
 
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+
+    void createTextureImage();
+
+    void createImage(uint32_t width,
+                     uint32_t height,
+                     VkFormat format,
+                     VkImageTiling tiling,
+                     VkImageUsageFlags usage,
+                     VkMemoryPropertyFlags properties,
+                     VkImage &image,
+                     VkDeviceMemory &imageMemory);
+
+    VkCommandBuffer beginSingleTimeCommands();
+
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 
