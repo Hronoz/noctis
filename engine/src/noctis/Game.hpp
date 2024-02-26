@@ -6,12 +6,12 @@
 #include <array>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#include "render/vulkan/VkTypes.hpp"
 #include <glm/glm.hpp>
 #include <limits>
 #include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include "render/vulkan/VkTypes.hpp"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -19,6 +19,7 @@ struct Vertex
 {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static VkVertexInputBindingDescription getBindingDescription()
     {
@@ -30,27 +31,34 @@ struct Vertex
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
         attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
         attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
         attributeDescriptions[1].binding = 0;
         attributeDescriptions[1].location = 1;
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+        attributeDescriptions[2].binding = 0;
+        attributeDescriptions[2].location = 2;
+        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
         return attributeDescriptions;
     }
 };
 
 const std::vector<Vertex> vertices = {
-    { { -0.5f, -0.5f }, { 0.5f, 0.0f, 0.0f } },
-    {  { 0.5f, -0.5f }, { 0.0f, 0.5f, 0.0f } },
-    {   { 0.5f, 0.5f }, { 0.0f, 0.0f, 0.5f } },
-    {  { -0.5f, 0.5f }, { 0.5f, 0.5f, 0.5f } }
+    { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f } },
+    {  { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
+    {   { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f } },
+    {  { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } }
 };
 
 const std::vector<uint16_t> indices = { 0, 1, 2, 2, 3, 0 };
@@ -108,7 +116,9 @@ class Game
         VkDescriptorPool descriptorPool;
         std::vector<VkDescriptorSet> descriptorSets;
         VkImage textureImage;
+        VkImageView textureImageView;
         VkDeviceMemory textureImageMemory;
+        VkSampler textureSampler;
     } context;
 
     struct QueueFamilyIndices
@@ -164,6 +174,12 @@ class Game
 
     void createCommandPool();
 
+    void createTextureImage();
+
+    void createTextureImageView();
+
+    void createTextureSampler();
+
     void createVertexBuffer();
 
     void createIndexBuffer();
@@ -200,6 +216,8 @@ class Game
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, u32 imageIndex);
 
+    VkImageView createImageView(VkImage image, VkFormat format);
+
     void cleanupSwapchain();
 
     void recreateSwapchain();
@@ -218,8 +236,6 @@ class Game
     bool checkValidationLayerSupport();
 
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-
-    void createTextureImage();
 
     void createImage(uint32_t width,
                      uint32_t height,
