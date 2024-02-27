@@ -29,6 +29,9 @@ add_library(engine SHARED src/noctis.cpp
         src/noctis/events/MouseMoveEvent.hpp
         src/noctis/Renderer.cpp
         src/noctis/Renderer.hpp
+        src/noctis/events/InputManager.cpp
+        src/noctis/events/InputManager.hpp
+        src/noctis/events/keycodes.hpp
 )
 target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
 target_link_libraries(engine Vulkan::Vulkan)

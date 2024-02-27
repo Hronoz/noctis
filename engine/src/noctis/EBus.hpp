@@ -22,6 +22,7 @@ class EBus
         eventListeners.clear();
         DEBUG("EBus destructor is called");
     }
+    EBus(EBus const &) = delete;
     void operator=(EBus const &) = delete;
 
   private:

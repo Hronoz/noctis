@@ -1,5 +1,4 @@
 #include "Renderer.hpp"
-#include "Game.hpp"
 #include "logger.hpp"
 #include "render/vulkan/VkTypes.hpp"
 #include <chrono>
@@ -10,10 +9,31 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
+const std::vector<Vertex> vertices = {
+    {  { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+    {   { 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+    {    { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+    {   { -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+    { { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+    {  { 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+    {   { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+    {  { -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+    { { -0.5f, -0.5f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+    {  { 0.5f, -0.5f, -1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+    {   { 0.5f, 0.5f, -1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+    {  { -0.5f, 0.5f, -1.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+};
+
+const std::vector<u16> indices = { 0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 8, 9, 10, 10, 11, 8 };
+
 Renderer::Renderer(const char *windowTitle, i32 width, i32 height)
   : platform(windowTitle, 0, 0, width, height)
 {
-    DEBUG("Game constructor was called");
+    DEBUG("Renderer constructor was called");
     createInstance();
     setupDebugMessenger();
     platform.createWindowSurface(context.instance, nullptr, &context.surface);
@@ -48,7 +68,7 @@ Renderer::Renderer(const char *windowTitle, i32 width, i32 height)
 
 Renderer::~Renderer()
 {
-    DEBUG("Game destructor was called");
+    DEBUG("Renderer destructor was called");
 
     cleanupSwapchain();
 
@@ -96,9 +116,9 @@ Renderer::~Renderer()
 }
 
 VkBool32 Renderer::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                             VkDebugUtilsMessageTypeFlagsEXT messageType,
-                             const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                             void *pUserData)
+                                 VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                 const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+                                 void *pUserData)
 {
     DEBUG("Validation layer: %s", pCallbackData->pMessage);
 
@@ -144,7 +164,7 @@ void Renderer::initVulkan()
 }
 bool Renderer::checkValidationLayerSupport()
 {
-    uint32_t layerCount;
+    u32 layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
     std::vector<VkLayerProperties> availableLayers(layerCount);
@@ -200,7 +220,7 @@ void Renderer::createInstance()
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
     if (enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+        createInfo.enabledLayerCount = static_cast<u32>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
 
         populateDebugMessengerCreateInfo(debugCreateInfo);
@@ -238,9 +258,9 @@ void Renderer::setupDebugMessenger()
     DEBUG("Vulkan debugger was initialized");
 }
 VkResult Renderer::createDebugUtilsMessengerEXT(VkInstance instance,
-                                            const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-                                            const VkAllocationCallbacks *pAllocator,
-                                            VkDebugUtilsMessengerEXT *pDebugMessenger)
+                                                const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
+                                                const VkAllocationCallbacks *pAllocator,
+                                                VkDebugUtilsMessengerEXT *pDebugMessenger)
 {
     auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
     if (func != nullptr) {
@@ -250,8 +270,8 @@ VkResult Renderer::createDebugUtilsMessengerEXT(VkInstance instance,
     }
 }
 void Renderer::destroyDebugUtilsMessengerExt(VkInstance instance,
-                                         VkDebugUtilsMessengerEXT debugMessenger,
-                                         const VkAllocationCallbacks *pAllocator)
+                                             VkDebugUtilsMessengerEXT debugMessenger,
+                                             const VkAllocationCallbacks *pAllocator)
 {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr) {
@@ -286,7 +306,7 @@ void Renderer::pickPhysicalDevice()
 }
 bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
 {
-    QueueFamilyIndices indices = findQueueFamilies(device);
+    QueueFamilyIndices familyIndices = findQueueFamilies(device);
     bool extensionsSupported = checkDeviceExtensionSupport(device);
     bool swapchainAdequate = false;
 
@@ -295,11 +315,11 @@ bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
         swapchainAdequate = !swapchainSupport.formats.empty() && !swapchainSupport.presentModes.empty();
     }
 
-    return indices.isComplete() && extensionsSupported && swapchainAdequate;
+    return familyIndices.isComplete() && extensionsSupported && swapchainAdequate;
 }
 QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
 {
-    QueueFamilyIndices indices;
+    QueueFamilyIndices queueFamilyIndices;
     u32 queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
@@ -308,31 +328,31 @@ QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
     i32 i = 0;
     for (const auto &queueFamily : queueFamilies) {
         if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            indices.graphicsFamily = i;
+            queueFamilyIndices.graphicsFamily = i;
         }
 
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, context.surface, &presentSupport);
 
         if (presentSupport) {
-            indices.presentFamily = i;
+            queueFamilyIndices.presentFamily = i;
         }
 
-        if (indices.isComplete()) {
+        if (queueFamilyIndices.isComplete()) {
             break;
         }
 
         i++;
     }
 
-    return indices;
+    return queueFamilyIndices;
 }
 void Renderer::createLogicalDevice()
 {
-    QueueFamilyIndices indices = findQueueFamilies(context.physicalDevice);
+    QueueFamilyIndices familyIndices = findQueueFamilies(context.physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<u32> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    std::set<u32> uniqueQueueFamilies = { familyIndices.graphicsFamily.value(), familyIndices.presentFamily.value() };
 
     f32 queuePriority = 1.0f;
     for (u32 queueFamily : uniqueQueueFamilies) {
@@ -363,8 +383,8 @@ void Renderer::createLogicalDevice()
 
     VK_CHECK(vkCreateDevice(context.physicalDevice, &createInfo, nullptr, &context.device));
 
-    vkGetDeviceQueue(context.device, indices.graphicsFamily.value(), 0, &context.graphicsQueue);
-    vkGetDeviceQueue(context.device, indices.graphicsFamily.value(), 0, &context.presentQueue);
+    vkGetDeviceQueue(context.device, familyIndices.graphicsFamily.value(), 0, &context.graphicsQueue);
+    vkGetDeviceQueue(context.device, familyIndices.graphicsFamily.value(), 0, &context.presentQueue);
 }
 void Renderer::createSwapchain()
 {
@@ -390,10 +410,10 @@ void Renderer::createSwapchain()
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices indices = findQueueFamilies(context.physicalDevice);
-    u32 queueFamilyIndicies[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    QueueFamilyIndices familyIndices = findQueueFamilies(context.physicalDevice);
+    u32 queueFamilyIndicies[] = { familyIndices.graphicsFamily.value(), familyIndices.presentFamily.value() };
 
-    if (indices.graphicsFamily != indices.presentFamily) {
+    if (familyIndices.graphicsFamily != familyIndices.presentFamily) {
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         createInfo.queueFamilyIndexCount = 2;
         createInfo.pQueueFamilyIndices = queueFamilyIndicies;
@@ -514,7 +534,8 @@ void Renderer::createGraphicsPipeline()
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertShaderStageInfo.module = vertShaderModule;
     vertShaderStageInfo.pName = "main";
 
@@ -795,7 +816,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer commandBuffer, u32 imageIndex
 
     std::array<VkClearValue, 2> clearValues{};
     clearValues[0].color = {
-        { 0.0f, 0.0f, 0.0f, 1.0f }
+        { 0.1f, 0.1f, 0.1f, 1.0f }
     };
     clearValues[1].depthStencil = { 1.0f, 0 };
 
@@ -979,7 +1000,7 @@ void Renderer::createVertexBuffer()
     vkDestroyBuffer(context.device, stagingBuffer, nullptr);
     vkFreeMemory(context.device, stagingBufferMemory, nullptr);
 }
-uint32_t Renderer::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+u32 Renderer::findMemoryType(u32 typeFilter, VkMemoryPropertyFlags properties)
 {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(context.physicalDevice, &memProperties);
@@ -992,10 +1013,10 @@ uint32_t Renderer::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pro
     throw std::runtime_error("failed to find suitable memory type!");
 }
 void Renderer::createBuffer(VkDeviceSize size,
-                        VkBufferUsageFlags usage,
-                        VkMemoryPropertyFlags properties,
-                        VkBuffer &buffer,
-                        VkDeviceMemory &bufferMemory)
+                            VkBufferUsageFlags usage,
+                            VkMemoryPropertyFlags properties,
+                            VkBuffer &buffer,
+                            VkDeviceMemory &bufferMemory)
 {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1109,7 +1130,7 @@ void Renderer::updateUniformBuffer(u32 currentImage)
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.proj = glm::perspective(
-      glm::radians(45.0f), context.swapchainExtent.width / (f32)context.swapchainExtent.height, 0.1f, 10.0f);
+      glm::radians(45.0f), (f32)context.swapchainExtent.width / (f32)context.swapchainExtent.height, 0.1f, 10.0f);
     ubo.proj[1][1] *= -1;
     std::memcpy(context.uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
@@ -1227,7 +1248,7 @@ void Renderer::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
 
     endSingleTimeCommands(commandBuffer);
 }
-void Renderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+void Renderer::copyBufferToImage(VkBuffer buffer, VkImage image, u32 width, u32 height)
 {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -1294,14 +1315,14 @@ void Renderer::createTextureImage()
     vkDestroyBuffer(context.device, stagingBuffer, nullptr);
     vkFreeMemory(context.device, stagingBufferMemory, nullptr);
 }
-void Renderer::createImage(uint32_t width,
-                       uint32_t height,
-                       VkFormat format,
-                       VkImageTiling tiling,
-                       VkImageUsageFlags usage,
-                       VkMemoryPropertyFlags properties,
-                       VkImage &image,
-                       VkDeviceMemory &imageMemory)
+void Renderer::createImage(u32 width,
+                           u32 height,
+                           VkFormat format,
+                           VkImageTiling tiling,
+                           VkImageUsageFlags usage,
+                           VkMemoryPropertyFlags properties,
+                           VkImage &image,
+                           VkDeviceMemory &imageMemory)
 {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1427,8 +1448,8 @@ void Renderer::createDepthResources()
     context.depthImageView = createImageView(context.depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 VkFormat Renderer::findSupportedFormat(const std::vector<VkFormat> &candidates,
-                                   VkImageTiling tiling,
-                                   VkFormatFeatureFlags features)
+                                       VkImageTiling tiling,
+                                       VkFormatFeatureFlags features)
 {
     for (VkFormat format : candidates) {
         VkFormatProperties props;

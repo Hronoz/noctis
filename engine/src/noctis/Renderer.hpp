@@ -54,7 +54,7 @@ struct QueueFamilyIndices
     std::optional<u32> graphicsFamily;
     std::optional<u32> presentFamily;
 
-    bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
+    bool isComplete() const { return graphicsFamily.has_value() && presentFamily.has_value(); }
 };
 struct SwapchainSupportDetails
 {
@@ -115,10 +115,13 @@ class Renderer
         VkImageView depthImageView;
     } context;
 
+    Platform platform;
+
 #ifndef NDEBUG // if debug
     const bool enableValidationLayers = true;
 #else
     const bool enableValidationLayers = false;
+
 #endif
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -137,8 +140,6 @@ class Renderer
     const std::vector<const char *> validationLayers = {
         "VK_LAYER_KHRONOS_validation",
     };
-
-    Platform platform;
 
     void initVulkan();
 
