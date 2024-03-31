@@ -188,6 +188,8 @@ namespace Noctis
 
         void createSyncObjects();
 
+        void initImgui();
+
         VkShaderModule createShaderModule(const std::vector<char> &code) const;
 
         void createBuffer(VkDeviceSize size,

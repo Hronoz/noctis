@@ -3,6 +3,9 @@
 #include <chrono>
 #include <cstring>
 #define GLM_ENABLE_EXPERIMENTAL
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_vulkan.h"
 #include <glm/gtx/hash.hpp>
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -21,15 +24,18 @@
         }                                                                                                              \
     } while (0)
 
-namespace std {
-    template<> struct hash<Noctis::Vertex> {
-        size_t operator()(Noctis::Vertex const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.pos) ^
-                     (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+namespace std
+{
+    template<>
+    struct hash<Noctis::Vertex>
+    {
+        size_t operator()(Noctis::Vertex const &vertex) const
+        {
+            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
                    (hash<glm::vec2>()(vertex.texCoord) << 1);
         }
     };
-}
+} // namespace std
 
 namespace Noctis
 {
@@ -89,11 +95,17 @@ namespace Noctis
         }
 
         DEBUG("Vulkan renderer initialized successfully.");
+
+        initImgui();
     }
 
     Renderer::~Renderer()
     {
         DEBUG("Renderer destructor was called");
+
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
 
         cleanupSwapchain();
 
@@ -238,9 +250,9 @@ namespace Noctis
     {
         createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                                     VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageSeverity =
+          VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+          VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
@@ -811,7 +823,7 @@ namespace Noctis
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0;                  // Optional
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         beginInfo.pInheritanceInfo = nullptr; // Optional
 
         VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
@@ -862,6 +874,14 @@ namespace Noctis
                                 0,
                                 nullptr);
         vkCmdDrawIndexed(commandBuffer, static_cast<u32>(indices.size()), 1, 0, 0, 0);
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow();
+        ImGui::Render();
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
         vkCmdEndRenderPass(commandBuffer);
 
         VK_CHECK(vkEndCommandBuffer(commandBuffer));
@@ -883,11 +903,9 @@ namespace Noctis
         }
 
         updateUniformBuffer(mCurrentFrame);
-
-        vkResetFences(mDevice, 1, &mInFlightFences[mCurrentFrame]);
-        vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
-
         recordCommandBuffer(mCommandBuffers[mCurrentFrame], imageIndex);
+        vkResetFences(mDevice, 1, &mInFlightFences[mCurrentFrame]);
+        //        vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1154,21 +1172,18 @@ namespace Noctis
 
     void Renderer::createDescriptorPool()
     {
-        VkDescriptorPoolSize poolSize;
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = static_cast<u32>(MAX_FRAMES_IN_FLIGHT);
-
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[0].descriptorCount = static_cast<u32>(MAX_FRAMES_IN_FLIGHT);
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount = static_cast<u32>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[1].descriptorCount = static_cast<u32>(MAX_FRAMES_IN_FLIGHT) * 2;
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         poolInfo.poolSizeCount = static_cast<u32>(poolSizes.size());
         poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = static_cast<u32>(MAX_FRAMES_IN_FLIGHT);
+        poolInfo.maxSets = static_cast<u32>(MAX_FRAMES_IN_FLIGHT) * 2;
 
         VK_CHECK(vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool));
     }
@@ -1540,6 +1555,29 @@ namespace Noctis
                 indices.push_back(indices.size());
             }
         }
+    }
+
+    void Renderer::initImgui()
+    {
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForVulkan(window, true);
+
+        ImGui_ImplVulkan_InitInfo initInfo{};
+        initInfo.Instance = mInstance;
+        initInfo.DescriptorPool = mDescriptorPool;
+        initInfo.RenderPass = mRenderPass;
+        initInfo.Device = mDevice;
+        initInfo.Queue = mPresentQueue;
+        initInfo.PhysicalDevice = mPhysicalDevice;
+        initInfo.MinImageCount = MAX_FRAMES_IN_FLIGHT;
+        initInfo.ImageCount = MAX_FRAMES_IN_FLIGHT;
+//        initInfo.Allocator = nullptr;
+//        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        ImGui_ImplVulkan_Init(&initInfo);
+
+        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        ImGui_ImplVulkan_CreateFontsTexture();
+        endSingleTimeCommands(commandBuffer);
     }
 
 } // namespace Noctis
