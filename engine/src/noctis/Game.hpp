@@ -2,7 +2,6 @@
 
 #include "Renderer.hpp"
 #include "noctis.hpp"
-#include "platform/Platform.hpp"
 
 #include <algorithm>
 #include <array>
@@ -15,30 +14,24 @@
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include <glm/glm.hpp>
 
-class IGameState;
-
-class Game
+namespace Noctis
 {
-    Renderer renderer;
+    class Game
+    {
+      public:
+        Renderer renderer;
 
-  public:
-    bool windowShouldClose = false;
+      public:
+        bool windowShouldClose = false;
 
-    Game(const char *windowTitle, i32 width, i32 height);
+        Game(const char *windowTitle, i32 width, i32 height);
 
-    ~Game();
+        ~Game();
 
-    void drawFrame();
+        void drawFrame();
 
-    void end();
+        void end();
 
-    void changeState(IGameState &state);
-
-    void pushState(IGameState &state);
-
-    void handleEvents();
-
-    void update();
-
-    void pollForEvent();
-};
+        void pollEvents();
+    };
+} // namespace Noctis

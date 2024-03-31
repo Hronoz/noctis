@@ -1,61 +1,30 @@
 #pragma once
 
-#define BIT(x) (1 << x)
-
-enum EventCategory
+namespace Noctis
 {
-    None = 0,
-    EventCategoryApplication = BIT(0),
-    EventCategoryInput = BIT(1),
-    EventCategoryKeyboard = BIT(2),
-    EventCategoryMouse = BIT(3),
-    EventCategoryMouseButton = BIT(4)
-};
+    typedef unsigned char u8;
+    typedef unsigned short u16;
+    typedef unsigned int u32;
+    typedef unsigned long long u64;
 
-enum class EventType
-{
-    MousePress,
-    MouseRelease,
-    MouseMove
-};
+    typedef signed char i8;
+    typedef signed short i16;
+    typedef signed int i32;
+    typedef signed long long i64;
 
-#define EVENT_CLASS_CATEGORY(category)                                                                                 \
-    i32 getCategoryFlags() const override                                                                              \
-    {                                                                                                                  \
-        return category;                                                                                               \
-    }
+    typedef float f32;
+    typedef double f64;
 
-void test();
+    static_assert(sizeof(u8) == 1, "Expected u8 to be 1 byte");
+    static_assert(sizeof(u16) == 2, "Expected u16 to be 2 byte");
+    static_assert(sizeof(u32) == 4, "Expected u32 to be 4 byte");
+    static_assert(sizeof(u64) == 8, "Expected u64 to be 8 byte");
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
+    static_assert(sizeof(i8) == 1, "Expected i8 to be 1 byte");
+    static_assert(sizeof(i16) == 2, "Expected i16 to be 2 byte");
+    static_assert(sizeof(i32) == 4, "Expected i32 to be 4 byte");
+    static_assert(sizeof(i64) == 8, "Expected i64 to be 8 byte");
 
-typedef signed char i8;
-typedef signed short i16;
-typedef signed int i32;
-typedef signed long long i64;
-
-typedef float f32;
-typedef double f64;
-
-static_assert(sizeof(u8) == 1, "Expected u8 to be 1 byte");
-static_assert(sizeof(u16) == 2, "Expected u16 to be 2 byte");
-static_assert(sizeof(u32) == 4, "Expected u32 to be 4 byte");
-static_assert(sizeof(u64) == 8, "Expected u64 to be 8 byte");
-
-static_assert(sizeof(i8) == 1, "Expected i8 to be 1 byte");
-static_assert(sizeof(i16) == 2, "Expected i16 to be 2 byte");
-static_assert(sizeof(i32) == 4, "Expected i32 to be 4 byte");
-static_assert(sizeof(i64) == 8, "Expected i64 to be 8 byte");
-
-static_assert(sizeof(f32) == 4, "Expected f32 to be 4 bytes");
-static_assert(sizeof(f64) == 8, "Expected f64 to be 8 bytes");
-
-#if defined(_WIN32)
-#define PLATFORM_WINDOWS
-#endif
-#if defined(__linux__)
-#define PLATFORM_LINUX
-#endif
+    static_assert(sizeof(f32) == 4, "Expected f32 to be 4 bytes");
+    static_assert(sizeof(f64) == 8, "Expected f64 to be 8 bytes");
+} // namespace Noctis

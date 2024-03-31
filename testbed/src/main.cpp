@@ -1,13 +1,10 @@
-#include "noctis/events/InputManager.hpp"
 #include <noctis/Game.hpp>
-
 int main()
 {
-//    InputManager inputManager;
-    Game game("serious shit", 500, 500);
+    Noctis::Game game("serious shit", 500, 500);
 
     while (!game.windowShouldClose) {
-        game.pollForEvent();
+        game.pollEvents();
         game.drawFrame();
     }
     game.end();

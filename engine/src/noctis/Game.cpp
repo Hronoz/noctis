@@ -1,22 +1,28 @@
 #include "Game.hpp"
 
-Game::Game(const char *windowTitle, i32 width, i32 height)
-  : renderer(windowTitle, width, height)
+namespace Noctis
 {
-}
 
-Game::~Game() {}
+    Game::Game(const char *windowTitle, i32 width, i32 height)
+      : renderer(windowTitle, width, height)
+    {
+    }
 
-void Game::drawFrame()
-{
-    renderer.drawFrame();
-}
+    Game::~Game() {}
 
-void Game::end()
-{
-    renderer.end();
-}
+    void Game::drawFrame()
+    {
+        renderer.drawFrame();
+    }
 
-void Game::pollForEvent() {
-    windowShouldClose = renderer.pollForEvent();
-}
+    void Game::end()
+    {
+        renderer.end();
+    }
+
+    void Game::pollEvents()
+    {
+        glfwPollEvents();
+        windowShouldClose = glfwWindowShouldClose(renderer.window);
+    }
+} // namespace Noctis
