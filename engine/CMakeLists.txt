@@ -27,8 +27,6 @@ add_library(engine SHARED src/noctis.cpp
         ${TRACY_SOURCES}
 )
 
-target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
-
 target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
 target_include_directories(engine PRIVATE ${PROJECT_SOURCE_DIR}/engine/lib)
 
