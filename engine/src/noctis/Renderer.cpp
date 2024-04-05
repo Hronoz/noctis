@@ -3,11 +3,11 @@
 #include <chrono>
 #include <cstring>
 #define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+#include <vulkan/vk_enum_string_helper.h>
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_vulkan.h"
-#include <glm/gtx/hash.hpp>
-#include <vulkan/vk_enum_string_helper.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -159,7 +159,13 @@ namespace Noctis
                                      const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
                                      void *pUserData)
     {
-        DEBUG("Validation layer: %s", pCallbackData->pMessage);
+        if (messageSeverity < VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+            INFO("Validation layer: %s", pCallbackData->pMessage);
+        } else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+            WARN("Validation layer: %s", pCallbackData->pMessage);
+        } else {
+            ERROR("Validation layer: %s", pCallbackData->pMessage);
+        }
 
         return VK_FALSE;
     }
@@ -209,7 +215,8 @@ namespace Noctis
 
     void Renderer::createInstance()
     {
-        VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
+        VkApplicationInfo applicationInfo{};
+        applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         applicationInfo.apiVersion = VK_API_VERSION_1_2;
         applicationInfo.pApplicationName = "testbed";
         applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -319,6 +326,7 @@ namespace Noctis
             throw std::runtime_error("failed to find a suitable GPU");
         }
     }
+
     bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
     {
         QueueFamilyIndices familyIndices = findQueueFamilies(device);
@@ -332,6 +340,7 @@ namespace Noctis
 
         return familyIndices.isComplete() && extensionsSupported && swapchainAdequate;
     }
+
     QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
     {
         QueueFamilyIndices queueFamilyIndices;
@@ -362,6 +371,7 @@ namespace Noctis
 
         return queueFamilyIndices;
     }
+
     void Renderer::createLogicalDevice()
     {
         QueueFamilyIndices familyIndices = findQueueFamilies(mPhysicalDevice);
@@ -403,6 +413,7 @@ namespace Noctis
         vkGetDeviceQueue(mDevice, familyIndices.graphicsFamily.value(), 0, &mGraphicsQueue);
         vkGetDeviceQueue(mDevice, familyIndices.graphicsFamily.value(), 0, &mPresentQueue);
     }
+
     void Renderer::createSwapchain()
     {
         SwapchainSupportDetails swapchainSupport = querySwapchainSupport(mPhysicalDevice);
@@ -454,6 +465,7 @@ namespace Noctis
         mSwapchainImageFormat = surfaceFormat.format;
         mSwapchainExtent = extent;
     }
+
     bool Renderer::checkDeviceExtensionSupport(VkPhysicalDevice device)
     {
         u32 extensionsCount;
@@ -469,6 +481,7 @@ namespace Noctis
 
         return requiredExtensions.empty();
     }
+
     SwapchainSupportDetails Renderer::querySwapchainSupport(VkPhysicalDevice device)
     {
         SwapchainSupportDetails details;
@@ -490,10 +503,11 @@ namespace Noctis
 
         return details;
     }
+
     VkSurfaceFormatKHR Renderer::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
     {
         for (const auto &availableFormat : availableFormats) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
                 availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 return availableFormat;
             }
@@ -501,6 +515,7 @@ namespace Noctis
 
         return availableFormats[0];
     }
+
     VkPresentModeKHR Renderer::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
     {
         for (const auto &availablePresentMode : availablePresentModes) {
@@ -511,6 +526,7 @@ namespace Noctis
 
         return VK_PRESENT_MODE_FIFO_KHR;
     }
+
     VkExtent2D Renderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR capabilities)
     {
         if (capabilities.currentExtent.width != std::numeric_limits<u32>::max()) {
@@ -533,6 +549,7 @@ namespace Noctis
             return actualExtent;
         }
     }
+
     void Renderer::createImageViews()
     {
         mSwapchainImageViews.resize(mSwapchainImages.size());
@@ -542,6 +559,7 @@ namespace Noctis
               createImageView(mSwapchainImages[i], mSwapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
+
     void Renderer::createGraphicsPipeline()
     {
         std::ifstream vertShaderCode("engine/src/noctis/shaders/vert.spv", std::ios::binary);
@@ -707,6 +725,7 @@ namespace Noctis
         vkDestroyShaderModule(mDevice, vertShaderModule, nullptr);
         vkDestroyShaderModule(mDevice, fragShaderModule, nullptr);
     }
+
     VkShaderModule Renderer::createShaderModule(const std::vector<char> &code) const
     {
         VkShaderModuleCreateInfo createInfo{};
@@ -719,6 +738,7 @@ namespace Noctis
 
         return shaderModule;
     }
+
     void Renderer::createRenderPass()
     {
         VkAttachmentDescription colorAttachment{};
@@ -777,6 +797,7 @@ namespace Noctis
 
         VK_CHECK(vkCreateRenderPass(mDevice, &renderPassInfo, nullptr, &mRenderPass));
     }
+
     void Renderer::createFramebuffers()
     {
         mSwapchainFramebuffers.resize(mSwapchainImageViews.size());
@@ -796,6 +817,7 @@ namespace Noctis
             VK_CHECK(vkCreateFramebuffer(mDevice, &framebufferInfo, nullptr, &mSwapchainFramebuffers[i]));
         }
     }
+
     void Renderer::createCommandPool()
     {
         QueueFamilyIndices queueFamilyIndices = findQueueFamilies(mPhysicalDevice);
@@ -807,6 +829,7 @@ namespace Noctis
 
         VK_CHECK(vkCreateCommandPool(mDevice, &poolInfo, nullptr, &mCommandPool));
     }
+
     void Renderer::createCommandBuffers()
     {
         mCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -907,34 +930,32 @@ namespace Noctis
         vkResetFences(mDevice, 1, &mInFlightFences[mCurrentFrame]);
         //        vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
         VkSemaphore waitSemaphores[] = { mImageAvailableSemaphores[mCurrentFrame] };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        VkSemaphore signalSemaphores[] = { mRenderFinishedSemaphores[mCurrentFrame] };
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &mCommandBuffers[mCurrentFrame];
-
-        VkSemaphore signalSemaphores[] = { mRenderFinishedSemaphores[mCurrentFrame] };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
         VK_CHECK(vkQueueSubmit(mGraphicsQueue, 1, &submitInfo, mInFlightFences[mCurrentFrame]));
 
+        VkSwapchainKHR swapChains[] = { mSwapchain };
+
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = { mSwapchain };
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
-        presentInfo.pResults = nullptr; // Optional
+        presentInfo.pResults = nullptr;
 
         result = vkQueuePresentKHR(mPresentQueue, &presentInfo);
 
@@ -1109,8 +1130,8 @@ namespace Noctis
         vkDestroyBuffer(mDevice, stagingBuffer, nullptr);
         vkFreeMemory(mDevice, stagingBufferMemory, nullptr);
     }
-    void Renderer::createDescriptorSetLayout()
 
+    void Renderer::createDescriptorSetLayout()
     {
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
         uboLayoutBinding.binding = 0;
@@ -1571,8 +1592,8 @@ namespace Noctis
         initInfo.PhysicalDevice = mPhysicalDevice;
         initInfo.MinImageCount = MAX_FRAMES_IN_FLIGHT;
         initInfo.ImageCount = MAX_FRAMES_IN_FLIGHT;
-//        initInfo.Allocator = nullptr;
-//        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        //        initInfo.Allocator = nullptr;
+        //        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         ImGui_ImplVulkan_Init(&initInfo);
 
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();

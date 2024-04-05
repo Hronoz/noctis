@@ -1,4 +1,5 @@
 #include <noctis/Game.hpp>
+
 int main()
 {
     Noctis::Game game("serious shit", 500, 500);

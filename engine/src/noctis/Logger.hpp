@@ -9,7 +9,7 @@
 #endif
 #define ERROR(msg, ...) logMessage(LogLevel::Error, msg __VA_OPT__(, ) __VA_ARGS__)
 #define INFO(msg, ...) logMessage(LogLevel::Info, msg __VA_OPT__(, ) __VA_ARGS__)
-#define WARN(msg, ...) logMessage(LogLevel::WARN, msg __VA_OPT__(, ) __VA_ARGS__)
+#define WARN(msg, ...) logMessage(LogLevel::Warn, msg __VA_OPT__(, ) __VA_ARGS__)
 
 namespace Noctis
 {

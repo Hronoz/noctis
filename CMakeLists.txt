@@ -11,5 +11,5 @@ project(noctis)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_subdirectory(engine)
-add_subdirectory(testbed)
+add_subdirectory("${PROJECT_SOURCE_DIR}/engine" "${PROJECT_SOURCE_DIR}/engine/bin")
+add_subdirectory("${PROJECT_SOURCE_DIR}/testbed" "${PROJECT_SOURCE_DIR}/testbed/bin")

@@ -24,10 +24,12 @@ add_library(engine SHARED src/noctis.cpp
         src/noctis/Renderer.cpp
         src/noctis/Renderer.hpp
         ${IMGUI_SOURCES}
+        ${TRACY_SOURCES}
 )
 
-target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
+target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
 
+target_include_directories(engine PUBLIC ${PROJECT_SOURCE_DIR}/engine)
 target_include_directories(engine PRIVATE ${PROJECT_SOURCE_DIR}/engine/lib)
 
 target_link_libraries(engine Vulkan::Vulkan)
