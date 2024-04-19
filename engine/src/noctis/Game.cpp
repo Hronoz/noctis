@@ -10,19 +10,11 @@ namespace Noctis
 
     Game::~Game() {}
 
-    void Game::drawFrame()
+    void Game::run()
     {
-        renderer.drawFrame();
-    }
-
-    void Game::end()
-    {
-        renderer.end();
-    }
-
-    void Game::pollEvents()
-    {
-        glfwPollEvents();
-        windowShouldClose = glfwWindowShouldClose(renderer.window);
+        while (!glfwWindowShouldClose(renderer.window)) {
+            glfwPollEvents();
+            renderer.drawFrame();
+        }
     }
 } // namespace Noctis

@@ -2,13 +2,9 @@
 
 int main()
 {
-    Noctis::Game game("serious shit", 500, 500);
+    Noctis::Game game("Testbed", 1280, 720);
 
-    while (!game.windowShouldClose) {
-        game.pollEvents();
-        game.drawFrame();
-    }
-    game.end();
+    game.run();
 
     return 0;
 }

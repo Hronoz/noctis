@@ -18,20 +18,14 @@ namespace Noctis
 {
     class Game
     {
-      public:
+      private:
         Renderer renderer;
 
       public:
-        bool windowShouldClose = false;
-
         Game(const char *windowTitle, i32 width, i32 height);
 
         ~Game();
 
-        void drawFrame();
-
-        void end();
-
-        void pollEvents();
+        void run();
     };
 } // namespace Noctis

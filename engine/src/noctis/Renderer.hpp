@@ -54,7 +54,6 @@ namespace Noctis
         }
     };
 
-
     struct QueueFamilyIndices
     {
         std::optional<u32> graphicsFamily;
@@ -120,11 +119,13 @@ namespace Noctis
         VkDeviceMemory mDepthImageMemory;
         VkImageView mDepthImageView;
 
-#ifndef NDEBUG // if debug
-        const bool enableValidationLayers = true;
-#else
-        const bool enableValidationLayers = false;
+        void createViewportImage();
+        void createViewportImageViews();
 
+#ifdef NDEBUG
+        const bool enableValidationLayers = false;
+#else
+        const bool enableValidationLayers = true;
 #endif
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -267,10 +268,8 @@ namespace Noctis
         ~Renderer();
         bool pollForEvent();
         void drawFrame();
-        void end();
         GLFWwindow *window;
         void loadModel();
     };
 
 } // namespace Noctis
-
