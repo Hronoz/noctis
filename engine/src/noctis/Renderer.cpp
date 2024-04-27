@@ -1,12 +1,14 @@
+#include "Renderer.hpp"
+
+#include <vulkan/vk_enum_string_helper.h>
+
+#include <chrono>
+#include <cstring>
+
+#include "Logger.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_vulkan.h"
-#include <chrono>
-#include <cstring>
-#include <vulkan/vk_enum_string_helper.h>
-
-#include "Logger.hpp"
-#include "Renderer.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
@@ -17,18 +19,18 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-#define VK_CHECK(x)                                                                                                    \
-    do {                                                                                                               \
-        VkResult err = x;                                                                                              \
-        if (err) {                                                                                                     \
-            ERROR("Vulkan error: %s", string_VkResult(err));                                                           \
-            exit(err);                                                                                                 \
-        }                                                                                                              \
+#define VK_CHECK(x)                                          \
+    do {                                                     \
+        VkResult err = x;                                    \
+        if (err) {                                           \
+            ERROR("Vulkan error: %s", string_VkResult(err)); \
+            exit(err);                                       \
+        }                                                    \
     } while (0)
 
 namespace std
 {
-    template<>
+    template <>
     struct hash<Noctis::Vertex>
     {
         size_t operator()(Noctis::Vertex const &vertex) const
@@ -37,15 +39,14 @@ namespace std
                    (hash<glm::vec2>()(vertex.texCoord) << 1);
         }
     };
-} // namespace std
+}  // namespace std
 
 namespace Noctis
 {
     static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
     {
         (void)scancode, (void)mods;
-        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 
     const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -91,6 +92,7 @@ namespace Noctis
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
+        initImgui();
 
         if (enableValidationLayers && !checkValidationLayerSupport()) {
             ERROR("Validation layers requested, but not available!");
@@ -98,8 +100,6 @@ namespace Noctis
         }
 
         DEBUG("Vulkan renderer initialized successfully.");
-
-        initImgui();
     }
 
     Renderer::~Renderer()
@@ -161,8 +161,7 @@ namespace Noctis
 
     VkBool32 Renderer::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                      VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                                     void *pUserData)
+                                     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
     {
         (void)messageType;
         if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
@@ -265,8 +264,8 @@ namespace Noctis
         createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         createInfo.messageSeverity =
-          VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-          VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
         createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
@@ -292,7 +291,7 @@ namespace Noctis
                                                     VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
         auto func =
-          (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+            (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
         if (func != nullptr) {
             return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
         } else {
@@ -300,12 +299,11 @@ namespace Noctis
         }
     }
 
-    void Renderer::destroyDebugUtilsMessengerExt(VkInstance instance,
-                                                 VkDebugUtilsMessengerEXT debugMessenger,
+    void Renderer::destroyDebugUtilsMessengerExt(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                                  const VkAllocationCallbacks *pAllocator)
     {
         auto func =
-          (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr) {
             func(instance, debugMessenger, pAllocator);
         }
@@ -343,8 +341,7 @@ namespace Noctis
         QueueFamilyIndices familyIndices = findQueueFamilies(mPhysicalDevice);
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        std::set<u32> uniqueQueueFamilies = { familyIndices.graphicsFamily.value(),
-                                              familyIndices.presentFamily.value() };
+        std::set<u32> uniqueQueueFamilies = {familyIndices.graphicsFamily.value(), familyIndices.presentFamily.value()};
 
         f32 queuePriority = 1.0f;
         for (u32 queueFamily : uniqueQueueFamilies) {
@@ -407,7 +404,7 @@ namespace Noctis
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         QueueFamilyIndices familyIndices = findQueueFamilies(mPhysicalDevice);
-        u32 queueFamilyIndicies[] = { familyIndices.graphicsFamily.value(), familyIndices.presentFamily.value() };
+        u32 queueFamilyIndicies[] = {familyIndices.graphicsFamily.value(), familyIndices.presentFamily.value()};
 
         if (familyIndices.graphicsFamily != familyIndices.presentFamily) {
             createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -439,7 +436,7 @@ namespace Noctis
 
         for (u32 i = 0; i < mSwapchainImages.size(); i++) {
             mSwapchainImageViews[i] =
-              createImageView(mSwapchainImages[i], mSwapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+                createImageView(mSwapchainImages[i], mSwapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
@@ -484,12 +481,12 @@ namespace Noctis
         dependency.dstSubpass = 0;
         dependency.srcAccessMask = 0;
         dependency.srcStageMask =
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.dstStageMask =
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-        std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+        std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = static_cast<u32>(attachments.size());
@@ -509,7 +506,6 @@ namespace Noctis
         uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uboLayoutBinding.descriptorCount = 1;
         uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
 
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
         samplerLayoutBinding.binding = 1;
@@ -518,7 +514,7 @@ namespace Noctis
         samplerLayoutBinding.pImmutableSamplers = nullptr;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<u32>(bindings.size());
@@ -550,11 +546,11 @@ namespace Noctis
         fragShaderStageInfo.module = fragShaderModule;
         fragShaderStageInfo.pName = "main";
 
-        VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
         std::vector<VkDynamicState> dynamicStates = {
-          VK_DYNAMIC_STATE_VIEWPORT,
-          VK_DYNAMIC_STATE_SCISSOR,
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
         };
         VkPipelineDynamicStateCreateInfo dynamicState{};
         dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -589,7 +585,7 @@ namespace Noctis
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
+        scissor.offset = {0, 0};
         scissor.extent = mSwapchainExtent;
 
         VkPipelineViewportStateCreateInfo viewportState{};
@@ -627,15 +623,11 @@ namespace Noctis
         depthStencil.depthWriteEnable = VK_TRUE;
         depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
         depthStencil.depthBoundsTestEnable = VK_FALSE;
-        depthStencil.minDepthBounds = 0.0f; // Optional
-        depthStencil.maxDepthBounds = 1.0f; // Optional
         depthStencil.stencilTestEnable = VK_FALSE;
-        depthStencil.front = {}; // Optional
-        depthStencil.back = {};  // Optional
 
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask =
-          VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         colorBlendAttachment.blendEnable = VK_FALSE;
         colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
         colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
@@ -696,13 +688,8 @@ namespace Noctis
     void Renderer::createDepthResources()
     {
         VkFormat depthFormat = findDepthFormat();
-        createImage(mSwapchainExtent.width,
-                    mSwapchainExtent.height,
-                    depthFormat,
-                    VK_IMAGE_TILING_OPTIMAL,
-                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    mDepthImage,
+        createImage(mSwapchainExtent.width, mSwapchainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mDepthImage,
                     mDepthImageMemory);
         mDepthImageView = createImageView(mDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
     }
@@ -712,7 +699,7 @@ namespace Noctis
         mSwapchainFramebuffers.resize(mSwapchainImageViews.size());
 
         for (size_t i = 0; i < mSwapchainImageViews.size(); i++) {
-            std::array<VkImageView, 2> attachments = { mSwapchainImageViews[i], mDepthImageView };
+            std::array<VkImageView, 2> attachments = {mSwapchainImageViews[i], mDepthImageView};
 
             VkFramebufferCreateInfo framebufferInfo{};
             framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -742,8 +729,8 @@ namespace Noctis
     void Renderer::createTextureImage()
     {
         int texWidth, texHeight, texChannels;
-        stbi_uc *pixels =
-          stbi_load("engine/src/noctis/textures/viking_room.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        stbi_uc *pixels = stbi_load("engine/src/noctis/textures/viking_room.png", &texWidth, &texHeight, &texChannels,
+                                    STBI_rgb_alpha);
         VkDeviceSize imageSize = texWidth * texHeight * 4;
 
         if (!pixels) {
@@ -753,10 +740,8 @@ namespace Noctis
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
 
-        createBuffer(imageSize,
-                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                     stagingBuffer,
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
                      stagingBufferMemory);
 
         void *data;
@@ -766,21 +751,14 @@ namespace Noctis
 
         stbi_image_free(pixels);
 
-        createImage(texWidth,
-                    texHeight,
-                    VK_FORMAT_R8G8B8A8_SRGB,
-                    VK_IMAGE_TILING_OPTIMAL,
-                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    mTextureImage,
-                    mTextureImageMemory);
+        createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    mTextureImage, mTextureImageMemory);
 
-        transitionImageLayout(
-          mTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        transitionImageLayout(mTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED,
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyBufferToImage(stagingBuffer, mTextureImage, static_cast<u32>(texWidth), static_cast<u32>(texHeight));
-        transitionImageLayout(mTextureImage,
-                              VK_FORMAT_R8G8B8A8_SRGB,
-                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        transitionImageLayout(mTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         vkDestroyBuffer(mDevice, stagingBuffer, nullptr);
@@ -835,14 +813,13 @@ namespace Noctis
             for (const auto &index : shape.mesh.indices) {
                 Vertex vertex{};
 
-                vertex.pos = { attrib.vertices[3 * index.vertex_index + 0],
-                               attrib.vertices[3 * index.vertex_index + 1],
-                               attrib.vertices[3 * index.vertex_index + 2] };
+                vertex.pos = {attrib.vertices[3 * index.vertex_index + 0], attrib.vertices[3 * index.vertex_index + 1],
+                              attrib.vertices[3 * index.vertex_index + 2]};
 
-                vertex.texCoord = { attrib.texcoords[2 * index.texcoord_index + 0],
-                                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1] };
+                vertex.texCoord = {attrib.texcoords[2 * index.texcoord_index + 0],
+                                   1.0f - attrib.texcoords[2 * index.texcoord_index + 1]};
 
-                vertex.color = { 1.0f, 1.0f, 1.0f };
+                vertex.color = {1.0f, 1.0f, 1.0f};
 
                 vertices.push_back(vertex);
                 indices.push_back(indices.size());
@@ -856,10 +833,8 @@ namespace Noctis
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                     stagingBuffer,
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
                      stagingBufferMemory);
 
         void *data;
@@ -867,11 +842,8 @@ namespace Noctis
         memcpy(data, vertices.data(), (size_t)bufferSize);
         vkUnmapMemory(mDevice, stagingBufferMemory);
 
-        createBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                     mVertexBuffer,
-                     mVertexBufferMemory);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mVertexBuffer, mVertexBufferMemory);
 
         copyBuffer(stagingBuffer, mVertexBuffer, bufferSize);
 
@@ -885,10 +857,8 @@ namespace Noctis
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                     stagingBuffer,
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
                      stagingBufferMemory);
 
         void *data;
@@ -896,11 +866,8 @@ namespace Noctis
         memcpy(data, indices.data(), (size_t)bufferSize);
         vkUnmapMemory(mDevice, stagingBufferMemory);
 
-        createBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                     mIndexBuffer,
-                     mIndexBufferMemory);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mIndexBuffer, mIndexBufferMemory);
 
         copyBuffer(stagingBuffer, mIndexBuffer, bufferSize);
 
@@ -917,10 +884,8 @@ namespace Noctis
         mUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            createBuffer(bufferSize,
-                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                         mUniformBuffers[i],
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mUniformBuffers[i],
                          mUniformBuffersMemory[i]);
 
             vkMapMemory(mDevice, mUniformBuffersMemory[i], 0, bufferSize, 0, &mUniformBuffersMapped[i]);
@@ -986,8 +951,8 @@ namespace Noctis
             descriptorWrites[1].descriptorCount = 1;
             descriptorWrites[1].pImageInfo = &imageInfo;
 
-            vkUpdateDescriptorSets(
-              mDevice, static_cast<u32>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+            vkUpdateDescriptorSets(mDevice, static_cast<u32>(descriptorWrites.size()), descriptorWrites.data(), 0,
+                                   nullptr);
         }
     }
 
@@ -1144,9 +1109,9 @@ namespace Noctis
             };
 
             actualExtent.width =
-              std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+                std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
             actualExtent.height =
-              std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+                std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
             return actualExtent;
         }
@@ -1170,7 +1135,6 @@ namespace Noctis
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        beginInfo.pInheritanceInfo = nullptr; // Optional
 
         VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
@@ -1178,14 +1142,12 @@ namespace Noctis
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = mRenderPass;
         renderPassInfo.framebuffer = mSwapchainFramebuffers[imageIndex];
-        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = mSwapchainExtent;
 
         std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = {
-            { 0.1f, 0.1f, 0.1f, 1.0f }
-        };
-        clearValues[1].depthStencil = { 1.0f, 0 };
+        clearValues[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
+        clearValues[1].depthStencil = {1.0f, 0};
 
         renderPassInfo.clearValueCount = static_cast<u32>(clearValues.size());
         renderPassInfo.pClearValues = clearValues.data();
@@ -1203,22 +1165,16 @@ namespace Noctis
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
+        scissor.offset = {0, 0};
         scissor.extent = mSwapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { mVertexBuffer };
-        VkDeviceSize offsets[] = { 0 };
+        VkBuffer vertexBuffers[] = {mVertexBuffer};
+        VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, mIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindDescriptorSets(commandBuffer,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                mPipelineLayout,
-                                0,
-                                1,
-                                &mDescriptorSets[mCurrentFrame],
-                                0,
-                                nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, 1,
+                                &mDescriptorSets[mCurrentFrame], 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, static_cast<u32>(indices.size()), 1, 0, 0, 0);
 
         ImGui_ImplVulkan_NewFrame();
@@ -1238,8 +1194,8 @@ namespace Noctis
         vkWaitForFences(mDevice, 1, &mInFlightFences[mCurrentFrame], VK_TRUE, UINT64_MAX);
 
         u32 imageIndex;
-        VkResult result = vkAcquireNextImageKHR(
-          mDevice, mSwapchain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX,
+                                                mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             recreateSwapchain();
@@ -1253,9 +1209,9 @@ namespace Noctis
         recordCommandBuffer(mCommandBuffers[mCurrentFrame], imageIndex);
         vkResetFences(mDevice, 1, &mInFlightFences[mCurrentFrame]);
 
-        VkSemaphore waitSemaphores[] = { mImageAvailableSemaphores[mCurrentFrame] };
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        VkSemaphore signalSemaphores[] = { mRenderFinishedSemaphores[mCurrentFrame] };
+        VkSemaphore waitSemaphores[] = {mImageAvailableSemaphores[mCurrentFrame]};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkSemaphore signalSemaphores[] = {mRenderFinishedSemaphores[mCurrentFrame]};
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1269,7 +1225,7 @@ namespace Noctis
 
         VK_CHECK(vkQueueSubmit(mGraphicsQueue, 1, &submitInfo, mInFlightFences[mCurrentFrame]));
 
-        VkSwapchainKHR swapChains[] = { mSwapchain };
+        VkSwapchainKHR swapChains[] = {mSwapchain};
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1333,11 +1289,8 @@ namespace Noctis
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
-    void Renderer::createBuffer(VkDeviceSize size,
-                                VkBufferUsageFlags usage,
-                                VkMemoryPropertyFlags properties,
-                                VkBuffer &buffer,
-                                VkDeviceMemory &bufferMemory)
+    void Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                                VkBuffer &buffer, VkDeviceMemory &bufferMemory)
     {
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1381,15 +1334,13 @@ namespace Noctis
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(
-          glm::radians(45.0f), (f32)mSwapchainExtent.width / (f32)mSwapchainExtent.height, 0.1f, 10.0f);
+        ubo.proj = glm::perspective(glm::radians(45.0f), (f32)mSwapchainExtent.width / (f32)mSwapchainExtent.height,
+                                    0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
         std::memcpy(mUniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
-    void Renderer::transitionImageLayout(VkImage image,
-                                         VkFormat format,
-                                         VkImageLayout oldLayout,
+    void Renderer::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout,
                                          VkImageLayout newLayout)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
@@ -1427,7 +1378,7 @@ namespace Noctis
                    newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
             barrier.srcAccessMask = 0;
             barrier.dstAccessMask =
-              VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
             sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
@@ -1454,22 +1405,16 @@ namespace Noctis
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
 
-        region.imageOffset = { 0, 0, 0 };
-        region.imageExtent = { width, height, 1 };
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = {width, height, 1};
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
         endSingleTimeCommands(commandBuffer);
     }
 
-    void Renderer::createImage(u32 width,
-                               u32 height,
-                               VkFormat format,
-                               VkImageTiling tiling,
-                               VkImageUsageFlags usage,
-                               VkMemoryPropertyFlags properties,
-                               VkImage &image,
-                               VkDeviceMemory &imageMemory)
+    void Renderer::createImage(u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                               VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory)
     {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1555,8 +1500,7 @@ namespace Noctis
         return imageView;
     }
 
-    VkFormat Renderer::findSupportedFormat(const std::vector<VkFormat> &candidates,
-                                           VkImageTiling tiling,
+    VkFormat Renderer::findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling,
                                            VkFormatFeatureFlags features)
     {
         for (VkFormat format : candidates) {
@@ -1575,15 +1519,14 @@ namespace Noctis
 
     VkFormat Renderer::findDepthFormat()
     {
-        return findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-                                   VK_IMAGE_TILING_OPTIMAL,
-                                   VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        return findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+                                   VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
     void Renderer::initImgui()
     {
         ImGui::CreateContext();
-        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_IsSRGB;
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         ImGui_ImplVulkan_InitInfo initInfo{};
@@ -1595,12 +1538,10 @@ namespace Noctis
         initInfo.PhysicalDevice = mPhysicalDevice;
         initInfo.MinImageCount = MAX_FRAMES_IN_FLIGHT;
         initInfo.ImageCount = MAX_FRAMES_IN_FLIGHT;
-        //        initInfo.Allocator = nullptr;
-        //        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         ImGui_ImplVulkan_Init(&initInfo);
 
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
         ImGui_ImplVulkan_CreateFontsTexture();
         endSingleTimeCommands(commandBuffer);
     }
-} // namespace Noctis
+}  // namespace Noctis

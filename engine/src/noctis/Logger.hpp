@@ -2,10 +2,10 @@
 
 #include "noctis.hpp"
 
-#ifndef NDEBUG // if debug
-#define DEBUG(msg, ...) logMessage(LogLevel::Debug, msg __VA_OPT__(, ) __VA_ARGS__)
-#else
+#ifdef NDEBUG
 #define DEBUG(msg, ...)
+#else
+#define DEBUG(msg, ...) logMessage(LogLevel::Debug, msg __VA_OPT__(, ) __VA_ARGS__)
 #endif
 #define ERROR(msg, ...) logMessage(LogLevel::Error, msg __VA_OPT__(, ) __VA_ARGS__)
 #define INFO(msg, ...) logMessage(LogLevel::Info, msg __VA_OPT__(, ) __VA_ARGS__)
@@ -22,4 +22,4 @@ namespace Noctis
     };
 
     void logMessage(LogLevel level, const char *msg, ...);
-} // namespace Noctis
+}  // namespace Noctis

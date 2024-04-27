@@ -1,6 +1,8 @@
 #include "noctis.hpp"
-#include "noctis/Logger.hpp"
+
 #include <vulkan/vulkan.h>
+
+#include "noctis/Logger.hpp"
 
 namespace Noctis
 {
@@ -10,4 +12,4 @@ namespace Noctis
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
         DEBUG("%d extensions supported", extensionCount);
     }
-} // namespace
+}  // namespace Noctis

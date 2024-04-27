@@ -1,10 +1,11 @@
 #pragma once
 
-#include "noctis.hpp"
 #include <array>
 #include <glm/glm.hpp>
 #include <optional>
 #include <vector>
+
+#include "noctis.hpp"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -78,7 +79,7 @@ namespace Noctis
 
     class Renderer
     {
-      private:
+       private:
         VkInstance mInstance;
         VkPhysicalDevice mPhysicalDevice;
         VkDevice mDevice;
@@ -146,58 +147,33 @@ namespace Noctis
         };
 
         void createInstance();
-
         void setupDebugMessenger();
-
         void pickPhysicalDevice();
-
         void createLogicalDevice();
-
         void createSwapchain();
-
         void createImageViews();
-
         void createRenderPass();
-
         void createDescriptorSetLayout();
-
         void createGraphicsPipeline();
-
         void createFramebuffers();
-
         void createCommandPool();
-
         void createDepthResources();
-
         void createTextureImage();
-
         void createTextureImageView();
-
         void createTextureSampler();
-
         void createVertexBuffer();
-
         void createIndexBuffer();
-
         void createUniformBuffers();
-
         void createDescriptorPool();
-
         void createDescriptorSets();
-
         void createCommandBuffers();
-
         void createSyncObjects();
-
         void initImgui();
 
         VkShaderModule createShaderModule(const std::vector<char> &code) const;
 
-        void createBuffer(VkDeviceSize size,
-                          VkBufferUsageFlags usage,
-                          VkMemoryPropertyFlags properties,
-                          VkBuffer &buffer,
-                          VkDeviceMemory &bufferMemory);
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                          VkBuffer &buffer, VkDeviceMemory &bufferMemory);
 
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
@@ -205,8 +181,7 @@ namespace Noctis
 
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-        VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
-                                     VkImageTiling tiling,
+        VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling,
                                      VkFormatFeatureFlags features);
 
         VkFormat findDepthFormat();
@@ -232,8 +207,7 @@ namespace Noctis
                                               const VkAllocationCallbacks *pAllocator,
                                               VkDebugUtilsMessengerEXT *pDebugMessenger);
 
-        void destroyDebugUtilsMessengerExt(VkInstance instance,
-                                           VkDebugUtilsMessengerEXT debugMessenger,
+        void destroyDebugUtilsMessengerExt(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                            const VkAllocationCallbacks *pAllocator);
 
         void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -242,14 +216,8 @@ namespace Noctis
 
         bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
-        void createImage(u32 width,
-                         u32 height,
-                         VkFormat format,
-                         VkImageTiling tiling,
-                         VkImageUsageFlags usage,
-                         VkMemoryPropertyFlags properties,
-                         VkImage &image,
-                         VkDeviceMemory &imageMemory);
+        void createImage(u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                         VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
 
         VkCommandBuffer beginSingleTimeCommands();
 
@@ -263,7 +231,7 @@ namespace Noctis
 
         std::vector<const char *> getRequiredExtensions();
 
-      public:
+       public:
         Renderer(const char *windowTitle, i32 width, i32 height);
         ~Renderer();
         bool pollForEvent();
@@ -272,4 +240,4 @@ namespace Noctis
         void loadModel();
     };
 
-} // namespace Noctis
+}  // namespace Noctis

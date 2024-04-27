@@ -3,10 +3,7 @@
 namespace Noctis
 {
 
-    Game::Game(const char *windowTitle, i32 width, i32 height)
-      : renderer(windowTitle, width, height)
-    {
-    }
+    Game::Game(const char *windowTitle, i32 width, i32 height) : renderer(windowTitle, width, height) {}
 
     Game::~Game() {}
 
@@ -17,4 +14,4 @@ namespace Noctis
             renderer.drawFrame();
         }
     }
-} // namespace Noctis
+}  // namespace Noctis
